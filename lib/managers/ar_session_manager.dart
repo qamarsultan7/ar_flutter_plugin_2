@@ -127,6 +127,14 @@ class ARSessionManager {
     "showPlanes": showPlanes,
     });
   }
+  Future<List<ARHitTestResult>> hitTestScreenPosition(double x, double y) async {
+  final List results = await _channel.invokeMethod("hitTest", {
+    "x": x,
+    "y": y,
+  });
+  return results.map((r) => ARHitTestResult.fromMap(r)).toList();
+}
+
 
   Future<void> _platformCallHandler(MethodCall call) {
     if (debug) {
