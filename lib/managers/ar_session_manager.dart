@@ -132,7 +132,9 @@ class ARSessionManager {
     "x": x,
     "y": y,
   });
-  return results.map((r) => ARHitTestResult.fromJson(e as Map<String, dynamic>)).toList();
+  return results
+    .map((r) => ARHitTestResult.fromJson(r as Map<String, dynamic>))
+    .toList();
 }
 
 
