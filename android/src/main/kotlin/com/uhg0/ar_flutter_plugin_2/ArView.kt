@@ -112,7 +112,7 @@ class ArView(
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
-    val frame = arSceneView.arFrame
+    val frame = sceneView.currentFrame
     if (frame != null) {
         val hitResults = frame.hitTest(x.toFloat(), y.toFloat())
         val results = mutableListOf<Map<String, Any>>()
