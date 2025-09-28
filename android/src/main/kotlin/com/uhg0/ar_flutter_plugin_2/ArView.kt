@@ -112,30 +112,26 @@ class ArView(
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
-    val frame = sceneView.currentFrame
-    if (frame != null) {
-        val hitResults = frame.hitTest(x.toFloat(), y.toFloat())
-        val results = mutableListOf<Map<String, Any>>()
+    val hitResults = sceneView.currentSession?.currentFrame?.hitTest(x.toFloat(), y.toFloat())
+    val results = mutableListOf<Map<String, Any>>()
 
-        for (hit in hitResults) {
-            val pose = hit.hitPose
-            val matrix = FloatArray(16)
-            pose.toMatrix(matrix, 0)
+    hitResults?.forEach { hit ->
+        val pose = hit.hitPose
+        val matrix = FloatArray(16)
+        pose.toMatrix(matrix, 0)
 
-            val matrixList = matrix.map { it.toDouble() }
+        val matrixList = matrix.map { it.toDouble() }
 
-            val resultMap = hashMapOf<String, Any>(
-                "worldTransform" to matrixList
-            )
+        val resultMap = hashMapOf<String, Any>(
+            "worldTransform" to matrixList
+        )
 
-            results.add(resultMap)
-        }
-
-        result.success(results)
-    } else {
-        result.success(emptyList<Map<String, Any>>())
+        results.add(resultMap)
     }
+
+    result.success(results)
 }
+
 
                 else -> result.notImplemented()
             }
