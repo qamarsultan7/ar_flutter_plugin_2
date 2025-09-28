@@ -139,11 +139,16 @@ class ArView(
             results.add(resultMap)
         }
 
+        if (BuildConfig.DEBUG) {
+            Log.d("ARHitTest", "Returning result: $results")
+        }
+
         result.success(results)
     } else {
         result.success(emptyList<Map<String, Any>>())
     }
 }
+
 
 
                 else -> result.notImplemented()
