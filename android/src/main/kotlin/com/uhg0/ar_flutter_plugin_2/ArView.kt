@@ -108,55 +108,34 @@ class ArView(
                 "snapshot" -> handleSnapshot(result)
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
-               "hitTest" -> {
+                               "hitTest" -> {
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
-    val motionEvent = MotionEvent.obtain(
-        System.currentTimeMillis(),
-        System.currentTimeMillis(),
-        MotionEvent.ACTION_DOWN,
-        x.toFloat(),
-        y.toFloat(),
-        0
-    )
+    val frame = sceneView.currentFrame
+    if (frame != null) {
+        val hitResults = frame.hitTest(x.toFloat(), y.toFloat())
+        val results = mutableListOf<Map<String, Any>>()
 
-    val hitResults = sceneView.arHitTest(motionEvent)
-    motionEvent.recycle() // prevent leaks
+        for (hit in hitResults) {
+            val pose = hit.hitPose
+            val matrix = FloatArray(16)
+            pose.toMatrix(matrix, 0)
 
-    val results = mutableListOf<Map<String, Any>>()
-    for (hit in hitResults) {
-        val pose = hit.hitPose
-        val matrix = FloatArray(16)
-        pose.toMatrix(matrix, 0)
-        val matrixList = matrix.map { it.toDouble() }
+            val matrixList = matrix.map { it.toDouble() }
 
-        val trackable = hit.trackable
-        val type = when (trackable) {
-            is com.google.ar.core.Plane -> 1
-            is com.google.ar.core.Point -> 2
-            else -> 0
+            val resultMap = hashMapOf<String, Any>(
+                "worldTransform" to matrixList
+            )
+
+            results.add(resultMap)
         }
 
-        val resultMap = hashMapOf<String, Any>(
-            "type" to type,
-            "distance" to (hit.distance ?: 0.0f),
-            "worldTransform" to matrixList
-        )
-        results.add(resultMap)
+        result.success(results)
+    } else {
+        result.success(emptyList<Map<String, Any>>())
     }
-
-    if (com.uhg0.ar_flutter_plugin_2.BuildConfig.DEBUG) {
-        Log.d("ARHitTest", "📡 Hit test results: $results")
-    }
-
-    result.success(results)
 }
-
-
-
-
-
                 else -> result.notImplemented()
             }
         }
