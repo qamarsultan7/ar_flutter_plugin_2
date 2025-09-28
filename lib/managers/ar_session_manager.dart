@@ -128,7 +128,7 @@ class ARSessionManager {
     });
   }
 
-Future<List<ARHitTestResult>> hitTestScreenPosition(double x, double y) async {
+Future<List<Matrix4>> hitTestScreenPosition(double x, double y) async {
   final List results = await _channel.invokeMethod("hitTest", {
     "x": x,
     "y": y,
@@ -141,9 +141,10 @@ Future<List<ARHitTestResult>> hitTestScreenPosition(double x, double y) async {
 
   debugPrint("📡 Raw hit test results from native: $results");
 
-  return results.map((r) {
-    final map = Map<String, dynamic>.from(r as Map);
-    return ARHitTestResult.fromJson(map);
+  // Convert each result["worldTransform"] into Matrix4
+  return results.map<Matrix4>((result) {
+    final List<dynamic> matrixValues = result["worldTransform"];
+    return Matrix4.fromList(matrixValues.cast<double>());
   }).toList();
 }
 
