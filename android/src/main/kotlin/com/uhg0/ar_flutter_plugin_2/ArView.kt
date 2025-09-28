@@ -123,7 +123,6 @@ class ArView(
             pose.toMatrix(matrix, 0)
 
             val matrixList = matrix.map { it.toDouble() }
-
             val resultMap = hashMapOf<String, Any>(
                 "worldTransform" to matrixList
             )
@@ -136,6 +135,7 @@ class ArView(
         result.success(emptyList<Map<String, Any>>())
     }
 }
+
                 else -> result.notImplemented()
             }
         }
