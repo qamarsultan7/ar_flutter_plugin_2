@@ -127,15 +127,28 @@ class ARSessionManager {
     "showPlanes": showPlanes,
     });
   }
-  Future<List<ARHitTestResult>> hitTestScreenPosition(double x, double y) async {
+
+Future<List<ARHitTestResult>> hitTestScreenPosition(double x, double y) async {
   final List results = await _channel.invokeMethod("hitTest", {
     "x": x,
     "y": y,
   });
-  return results
-    .map((r) => ARHitTestResult.fromJson(r as Map<String, dynamic>))
-    .toList();
+
+  if (results.isEmpty) {
+    debugPrint("⚠️ No hit test results from native");
+    return [];
+  }
+
+  debugPrint("📡 Raw hit test results from native: $results");
+
+  return results.map((r) {
+    final map = Map<String, dynamic>.from(r as Map);
+    return ARHitTestResult.fromJson(map);
+  }).toList();
 }
+
+
+
 
 
   Future<void> _platformCallHandler(MethodCall call) {
