@@ -108,7 +108,7 @@ class ArView(
                 "snapshot" -> handleSnapshot(result)
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
-                "hitTest" -> {
+               "hitTest" -> {
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
@@ -121,10 +121,18 @@ class ArView(
             val pose = hit.hitPose
             val matrix = FloatArray(16)
             pose.toMatrix(matrix, 0)
-
             val matrixList = matrix.map { it.toDouble() }
 
+            val trackable = hit.trackable
+            val type = when (trackable) {
+                is com.google.ar.core.Plane -> 1 // plane
+                is com.google.ar.core.Point -> 2 // point
+                else -> 0 // undefined
+            }
+
             val resultMap = hashMapOf<String, Any>(
+                "type" to type,
+                "distance" to hit.distance,
                 "worldTransform" to matrixList
             )
 
@@ -136,6 +144,7 @@ class ArView(
         result.success(emptyList<Map<String, Any>>())
     }
 }
+
 
                 else -> result.notImplemented()
             }
