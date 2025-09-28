@@ -125,9 +125,9 @@ class ArView(
 
             val trackable = hit.trackable
             val type = when (trackable) {
-                is com.google.ar.core.Plane -> 1 // plane
-                is com.google.ar.core.Point -> 2 // point
-                else -> 0 // undefined
+                is com.google.ar.core.Plane -> 1
+                is com.google.ar.core.Point -> 2
+                else -> 0
             }
 
             val resultMap = hashMapOf<String, Any>(
@@ -135,12 +135,7 @@ class ArView(
                 "distance" to hit.distance,
                 "worldTransform" to matrixList
             )
-
             results.add(resultMap)
-        }
-
-        if (BuildConfig.DEBUG) {
-            Log.d("ARHitTest", "Returning result: $results")
         }
 
         result.success(results)
@@ -148,6 +143,7 @@ class ArView(
         result.success(emptyList<Map<String, Any>>())
     }
 }
+
 
 
 
