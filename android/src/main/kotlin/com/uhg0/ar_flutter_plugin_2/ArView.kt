@@ -108,7 +108,7 @@ class ArView(
                 "snapshot" -> handleSnapshot(result)
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
-                               "hitTest" -> {
+                "hitTest" -> {
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
