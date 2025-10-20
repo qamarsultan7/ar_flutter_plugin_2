@@ -112,11 +112,15 @@ class ArView(
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
-    val hitResults = sceneView.currentSession?.currentFrame?.hitTest(x.toFloat(), y.toFloat())
+    // Updated API: use arSession instead of currentSession
+    val hitResults = sceneView.arSession
+        ?.currentFrame
+        ?.hitTest(x.toFloat(), y.toFloat())
+
     val results = mutableListOf<Map<String, Any>>()
 
-    hitResults?.forEach { hit ->
-        val pose = hit.hitPose
+    hitResults?.forEach { hitResult ->
+        val pose = hitResult.hitPose
         val matrix = FloatArray(16)
         pose.toMatrix(matrix, 0)
 
@@ -131,6 +135,7 @@ class ArView(
 
     result.success(results)
 }
+
 
 
                 else -> result.notImplemented()
