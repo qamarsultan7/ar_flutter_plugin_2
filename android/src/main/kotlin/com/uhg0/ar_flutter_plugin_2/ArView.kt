@@ -108,33 +108,29 @@ class ArView(
                 "snapshot" -> handleSnapshot(result)
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
-                "hitTest" -> {
+               "hitTest" -> {
     val x = (call.argument<Double>("x")) ?: 0.0
     val y = (call.argument<Double>("y")) ?: 0.0
 
-    // Updated API: use arSession instead of currentSession
-    val hitResults = sceneView.arSession
-        ?.currentFrame
-        ?.hitTest(x.toFloat(), y.toFloat())
+    // SceneView 2.2.x uses `session` instead of `currentSession`
+    val frame = sceneView.session?.update()
+    val hitResults = frame?.hitTest(x.toFloat(), y.toFloat())
 
     val results = mutableListOf<Map<String, Any>>()
 
-    hitResults?.forEach { hitResult ->
+    // Kotlin 1.9 needs explicit type for lambda parameter
+    hitResults?.forEach { hitResult: com.google.ar.core.HitResult ->
         val pose = hitResult.hitPose
         val matrix = FloatArray(16)
         pose.toMatrix(matrix, 0)
 
         val matrixList = matrix.map { it.toDouble() }
-
-        val resultMap = hashMapOf<String, Any>(
-            "worldTransform" to matrixList
-        )
-
-        results.add(resultMap)
+        results.add(mapOf("worldTransform" to matrixList))
     }
 
     result.success(results)
 }
+
 
 
 
