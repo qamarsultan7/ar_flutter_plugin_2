@@ -10,6 +10,7 @@ import android.view.PixelCopy
 import android.view.View
 import android.widget.FrameLayout
 import androidx.lifecycle.Lifecycle
+import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.Plane
 import com.google.ar.core.TrackingState
@@ -34,13 +35,13 @@ class ArView(
     messenger: BinaryMessenger,
     id: Int,
 ) : PlatformView {
-    private val TAG: String = ArView::class.java.name
+
+    private val TAG = ArView::class.java.name
     private val viewContext: Context = context
     private var sceneView: ARSceneView
     private val mainScope = CoroutineScope(Dispatchers.Main)
     private val rootLayout: FrameLayout = FrameLayout(context)
     private val sessionChannel: MethodChannel = MethodChannel(messenger, "arsession_$id")
-    
     private val detectedPlanes = mutableSetOf<Plane>()
     private var showAnimatedGuide = true
     private var isSessionPaused = false
@@ -52,6 +53,7 @@ class ArView(
                 "showPlanes" -> handleShowPlanes(call, result)
                 "dispose" -> dispose()
                 "snapshot" -> handleSnapshot(result)
+                "getAnchorPose" -> handleGetAnchorPose(call, result)
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
                 "hitTest" -> handleHitTest(call, result)
@@ -73,7 +75,7 @@ class ArView(
                 }
             }
         )
-        
+
         rootLayout.addView(sceneView)
         sessionChannel.setMethodCallHandler(onSessionMethodCall)
     }
@@ -87,10 +89,10 @@ class ArView(
 
             sceneView.session?.let { session ->
                 session.configure(session.config.apply {
-                    depthMode = when (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
-                        true -> Config.DepthMode.AUTOMATIC
-                        else -> Config.DepthMode.DISABLED
-                    }
+                    depthMode = if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
+                        Config.DepthMode.AUTOMATIC
+                    } else Config.DepthMode.DISABLED
+
                     planeFindingMode = when (argPlaneDetectionConfig) {
                         1 -> Config.PlaneFindingMode.HORIZONTAL
                         2 -> Config.PlaneFindingMode.VERTICAL
@@ -99,12 +101,8 @@ class ArView(
                     }
                 })
             }
-            
-            sceneView.apply {
-                environment = environmentLoader.createHDREnvironment(
-                    assetFileLocation = "environments/evening_meadow_2k.hdr"
-                )!!
 
+            sceneView.apply {
                 planeRenderer.isEnabled = argShowPlanes
                 planeRenderer.isVisible = argShowPlanes
                 planeRenderer.planeRendererMode = PlaneRenderer.PlaneRendererMode.RENDER_ALL
@@ -143,25 +141,19 @@ class ArView(
                             }
                         }
                     } catch (e: Exception) {
-                        when (e) {
-                            is SessionPausedException -> {
-                                Log.d(TAG, "Session paused, skipping frame update")
-                            }
-                            else -> {
-                                Log.e(TAG, "Error during frame update", e)
-                            }
+                        if (e is SessionPausedException) {
+                            Log.d(TAG, "Session paused, skipping frame update")
+                        } else {
+                            Log.e(TAG, "Error during frame update", e)
                         }
                     }
                 }
 
                 if (argShowAnimatedGuide && showAnimatedGuide) {
                     val handMotionLayout =
-                        LayoutInflater
-                            .from(context)
+                        LayoutInflater.from(context)
                             .inflate(R.layout.sceneform_hand_layout, rootLayout, false)
-                            .apply {
-                                tag = "hand_motion_layout"
-                            }
+                            .apply { tag = "hand_motion_layout" }
                     rootLayout.addView(handMotionLayout)
                 }
 
@@ -169,14 +161,13 @@ class ArView(
                     try {
                         val loader = FlutterInjector.instance().flutterLoader()
                         val assetKey = loader.getLookupKeyForAsset(customPlaneTexturePath)
-                        val customPlaneTexture =
-                            ImageTexture
-                                .Builder()
-                                .bitmap(materialLoader.assets, assetKey)
-                                .build(engine)
-                        planeRenderer.planeMaterial.defaultInstance.apply {
-                            setTexture(PlaneRenderer.MATERIAL_TEXTURE, customPlaneTexture)
-                        }
+                        val customPlaneTexture = ImageTexture.Builder()
+                            .bitmap(materialLoader.assets, assetKey)
+                            .build(engine)
+                        planeRenderer.planeMaterial.defaultInstance.setTexture(
+                            PlaneRenderer.MATERIAL_TEXTURE,
+                            customPlaneTexture
+                        )
                     } catch (e: Exception) {
                         Log.e(TAG, "Error applying custom texture: ${e.message}")
                     }
@@ -189,70 +180,82 @@ class ArView(
     }
 
     private fun handleHitTest(call: MethodCall, result: MethodChannel.Result) {
-        val x = (call.argument<Double>("x")) ?: 0.0
-        val y = (call.argument<Double>("y")) ?: 0.0
+        val x = call.argument<Double>("x") ?: 0.0
+        val y = call.argument<Double>("y") ?: 0.0
 
         val frame = sceneView.session?.update()
         val hitResults = frame?.hitTest(x.toFloat(), y.toFloat())
-
         val results = mutableListOf<Map<String, Any>>()
 
         hitResults?.forEach { hitResult ->
             val pose = hitResult.hitPose
             val matrix = FloatArray(16)
             pose.toMatrix(matrix, 0)
-
-            val matrixList = matrix.map { it.toDouble() }
-            results.add(mapOf("worldTransform" to matrixList))
+            results.add(mapOf("worldTransform" to matrix.map { it.toDouble() }))
         }
 
         result.success(results)
     }
 
-    private fun handleSnapshot(result: MethodChannel.Result) {
+    private fun handleGetAnchorPose(call: MethodCall, result: MethodChannel.Result) {
         try {
-            mainScope.launch {
-                withContext(Dispatchers.Main) {
-                    val bitmap = Bitmap.createBitmap(
-                        sceneView.width,
-                        sceneView.height,
-                        Bitmap.Config.ARGB_8888,
+            val anchorId = call.argument<String>("anchorId")
+            if (anchorId == null) {
+                result.error("INVALID_ARGUMENT", "Anchor ID is required", null)
+                return
+            }
+
+            val anchor: Anchor? = sceneView.session?.allAnchors?.find {
+                it.cloudAnchorId == anchorId || it.hashCode().toString() == anchorId
+            }
+
+            if (anchor != null) {
+                val pose = anchor.pose
+                val poseData = mapOf(
+                    "position" to mapOf(
+                        "x" to pose.tx().toDouble(),
+                        "y" to pose.ty().toDouble(),
+                        "z" to pose.tz().toDouble()
+                    ),
+                    "rotation" to mapOf(
+                        "x" to pose.qx().toDouble(),
+                        "y" to pose.qy().toDouble(),
+                        "z" to pose.qz().toDouble(),
+                        "w" to pose.qw().toDouble()
                     )
-
-                    try {
-                        val listener = PixelCopy.OnPixelCopyFinishedListener { copyResult ->
-                            if (copyResult == PixelCopy.SUCCESS) {
-                                val byteStream = java.io.ByteArrayOutputStream()
-                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream)
-                                val byteArray = byteStream.toByteArray()
-                                result.success(byteArray)
-                            } else {
-                                result.error("SNAPSHOT_ERROR", "Failed to capture snapshot", null)
-                            }
-                        }
-
-                        PixelCopy.request(
-                            sceneView,
-                            bitmap,
-                            listener,
-                            Handler(Looper.getMainLooper()),
-                        )
-                    } catch (e: Exception) {
-                        result.error("SNAPSHOT_ERROR", e.message, null)
-                    }
-                }
+                )
+                result.success(poseData)
+            } else {
+                result.error("ANCHOR_NOT_FOUND", "Anchor with ID $anchorId not found", null)
             }
         } catch (e: Exception) {
-            result.error("SNAPSHOT_ERROR", e.message, null)
+            result.error("ANCHOR_POSE_ERROR", e.message, null)
+        }
+    }
+
+    private fun handleSnapshot(result: MethodChannel.Result) {
+        mainScope.launch {
+            try {
+                val bitmap = Bitmap.createBitmap(sceneView.width, sceneView.height, Bitmap.Config.ARGB_8888)
+                PixelCopy.request(sceneView, bitmap, { copyResult ->
+                    if (copyResult == PixelCopy.SUCCESS) {
+                        val byteStream = java.io.ByteArrayOutputStream()
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream)
+                        result.success(byteStream.toByteArray())
+                    } else {
+                        result.error("SNAPSHOT_ERROR", "Failed to capture snapshot", null)
+                    }
+                }, Handler(Looper.getMainLooper()))
+            } catch (e: Exception) {
+                result.error("SNAPSHOT_ERROR", e.message, null)
+            }
         }
     }
 
     private fun handleShowPlanes(call: MethodCall, result: MethodChannel.Result) {
         try {
             val showPlanes = call.argument<Boolean>("showPlanes") ?: false
-            sceneView.apply {
-                planeRenderer.isEnabled = showPlanes
-            }
+            sceneView.planeRenderer.isEnabled = showPlanes
             result.success(null)
         } catch (e: Exception) {
             result.error("SHOW_PLANES_ERROR", e.message, null)
