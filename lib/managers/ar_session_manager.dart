@@ -155,6 +155,17 @@ class ARSessionManager {
     }).toList();
   }
 
+  static Future<bool> isArSupported() async {
+  try {
+    final bool supported =
+        await _channel.invokeMethod<bool>('isArSupported') ?? false;
+    return supported;
+  } catch (e) {
+    return false;
+  }
+}
+
+
   Future<void> _platformCallHandler(MethodCall call) {
     if (debug) {
       print('_platformCallHandler call ${call.method} ${call.arguments}');
