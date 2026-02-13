@@ -155,6 +155,15 @@ class ARSessionManager {
     }).toList();
   }
 
+  static Future<bool> isArSupported() async {
+    const MethodChannel _AR2channel = MethodChannel('ar_flutter_plugin_2/ar_support');
+    try {
+      final bool supported = await _AR2channel.invokeMethod('isArSupported') ?? false;
+      return supported;
+    } catch (e) {
+      return false;
+    }
+  }
 
 
   Future<void> _platformCallHandler(MethodCall call) {
