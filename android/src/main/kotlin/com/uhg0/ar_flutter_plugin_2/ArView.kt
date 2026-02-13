@@ -57,6 +57,17 @@ class ArView(
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
                 "hitTest" -> handleHitTest(call, result)
+                 "isArSupported" -> {
+                val supported = when (
+                    ArCoreApk.getInstance().checkAvailability(context)
+                ) {
+                    ArCoreApk.Availability.SUPPORTED_INSTALLED,
+                    ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD,
+                    ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED -> true
+                    else -> false
+                }
+                result.success(supported)
+            }
                 else -> result.notImplemented()
             }
         }
