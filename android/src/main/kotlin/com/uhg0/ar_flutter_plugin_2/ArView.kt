@@ -1,5 +1,6 @@
 package com.uhg0.ar_flutter_plugin_2
 
+import com.google.ar.core.ArCoreApk
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Handler
@@ -57,17 +58,17 @@ class ArView(
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
                 "hitTest" -> handleHitTest(call, result)
-                 "isArSupported" -> {
-                val supported = when (
-                    ArCoreApk.getInstance().checkAvailability(context)
-                ) {
-                    ArCoreApk.Availability.SUPPORTED_INSTALLED,
-                    ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD,
-                    ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED -> true
-                    else -> false
+                "isArSupported" -> {
+                    ArCoreApk.getInstance().checkAvailabilityAsync(context) { availability ->
+                        val supported = when (availability) {
+                            ArCoreApk.Availability.SUPPORTED_INSTALLED,
+                            ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD,
+                            ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED -> true
+                            else -> false
+                        }
+                        result.success(supported)
+                    }
                 }
-                result.success(supported)
-            }
                 else -> result.notImplemented()
             }
         }
