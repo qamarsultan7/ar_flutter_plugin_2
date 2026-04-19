@@ -114,28 +114,29 @@ class ArView(
                 }
 
                 onFrame = { frameTime ->
+                    // NOTE: SceneView already calls session.update() before firing this callback.
+                    // We access the current AR frame directly via arFrame — no double-update needed.
                     try {
                         if (!isSessionPaused) {
-                            session?.update()?.let { frame ->
-                                if (showAnimatedGuide) {
-                                    frame.getUpdatedTrackables(Plane::class.java).forEach { plane ->
-                                        if (plane.trackingState == TrackingState.TRACKING) {
-                                            rootLayout.findViewWithTag<View>("hand_motion_layout")?.let { handMotionLayout ->
-                                                rootLayout.removeView(handMotionLayout)
-                                                showAnimatedGuide = false
-                                            }
+                            val frame = arFrame ?: return@onFrame
+                            if (showAnimatedGuide) {
+                                frame.getUpdatedTrackables(Plane::class.java).forEach { plane ->
+                                    if (plane.trackingState == TrackingState.TRACKING) {
+                                        rootLayout.findViewWithTag<View>("hand_motion_layout")?.let { handMotionLayout ->
+                                            rootLayout.removeView(handMotionLayout)
+                                            showAnimatedGuide = false
                                         }
                                     }
                                 }
+                            }
 
-                                frame.getUpdatedTrackables(Plane::class.java).forEach { plane ->
-                                    if (plane.trackingState == TrackingState.TRACKING &&
-                                        !detectedPlanes.contains(plane)
-                                    ) {
-                                        detectedPlanes.add(plane)
-                                        mainScope.launch {
-                                            sessionChannel.invokeMethod("onPlaneDetected", detectedPlanes.size)
-                                        }
+                            frame.getUpdatedTrackables(Plane::class.java).forEach { plane ->
+                                if (plane.trackingState == TrackingState.TRACKING &&
+                                    !detectedPlanes.contains(plane)
+                                ) {
+                                    detectedPlanes.add(plane)
+                                    mainScope.launch {
+                                        sessionChannel.invokeMethod("onPlaneDetected", detectedPlanes.size)
                                     }
                                 }
                             }
@@ -183,7 +184,8 @@ class ArView(
         val x = call.argument<Double>("x") ?: 0.0
         val y = call.argument<Double>("y") ?: 0.0
 
-        val frame = sceneView.session?.update()
+        // Use the already-updated arFrame from SceneView instead of calling session.update() again
+        val frame = sceneView.arFrame
         val hitResults = frame?.hitTest(x.toFloat(), y.toFloat())
         val results = mutableListOf<Map<String, Any>>()
 

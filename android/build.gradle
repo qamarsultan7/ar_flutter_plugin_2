@@ -10,7 +10,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.2'
+        classpath 'com.android.tools.build:gradle:8.7.3'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -23,11 +23,15 @@ allprojects {
     }
 }
 
+// Filament version is now managed by arsceneview — do NOT force-pin it here,
+// as older versions (e.g. 1.50.1) are NOT compiled with 16 KB page alignment
+// required by Google Play for Android 15+ devices.
+
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdk 34
+    compileSdk 35
     namespace 'com.uhg0.ar_flutter_plugin_2'
 
     compileOptions {
@@ -50,13 +54,13 @@ android {
 
     defaultConfig {
         minSdkVersion 28
-        targetSdkVersion 34
+        targetSdkVersion 35
     }
 }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'io.github.sceneview:arsceneview:2.2.1'
+    implementation 'io.github.sceneview:arsceneview:2.3.0'
     implementation 'com.google.ar:core:1.44.0'      // <- add this
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }
